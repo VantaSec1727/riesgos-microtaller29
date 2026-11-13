@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard de Riesgos - Microtaller 29</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#6f6d68;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --crit:#d03b3b; --warn:#fab219; --good:#0ca30c; --goodtext:#006300;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#a09e97;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --goodtext:#0ca30c;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#a09e97;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --goodtext:#0ca30c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+h1{font-size:24px;margin:0 0 4px;font-weight:650}
+.sub{color:var(--ink2);margin:0;font-size:14px}
+h2{font-size:15px;margin:0 0 2px;font-weight:650}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card .hint{color:var(--ink2);font-size:13px;margin:0 0 12px}
+button,select,input,textarea{font:inherit;color:var(--ink)}
+.btn{background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{background:color-mix(in srgb,var(--ink) 6%,var(--surface))}
+.btn.primary{background:var(--s1);border-color:var(--s1);color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}
+.filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink2);gap:3px}
+.filters select,.filters input{background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:7px 10px;min-width:150px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{padding:14px 16px}
+.kpi .lab{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:34px;font-weight:650;line-height:1.15;margin-top:4px}
+.kpi .note{font-size:12px;color:var(--ink2)}
+.g{font-size:12px}
+.g.Alto{color:var(--crit)} .g.Medio{color:var(--warn)} .g.Bajo{color:var(--good)}
+.row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px;margin-bottom:16px}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-bottom:16px}
+/* donut */
+.donut{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.donut svg{width:180px;height:180px;flex:none}
+.seg{cursor:pointer;transition:opacity .15s}
+.seg:hover{opacity:.8}
+.legend{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.legend .it{display:flex;align-items:center;gap:8px}
+.sw{width:12px;height:12px;border-radius:3px;flex:none}
+/* bars */
+.brow{display:grid;grid-template-columns:128px 1fr 44px;gap:8px;align-items:center;padding:5px 4px;border-radius:6px;font-size:13px}
+.brow:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.btrack{height:14px;background:var(--grid);border-radius:0 4px 4px 0;position:relative}
+.bfill{display:block;height:100%;background:var(--s1);border-radius:0 4px 4px 0}
+.bval{text-align:right;font-weight:600}
+/* heat */
+.heat{display:grid;grid-template-columns:22px repeat(5,1fr);gap:3px}
+.hc{aspect-ratio:1.25;min-height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+.hc.z-Alto{background:color-mix(in srgb,var(--crit) 24%,var(--surface))}
+.hc.z-Medio{background:color-mix(in srgb,var(--warn) 30%,var(--surface))}
+.hc.z-Bajo{background:color-mix(in srgb,var(--good) 22%,var(--surface))}
+.hc[data-n]:not([data-n="0"]){cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--ink2)}
+.ha{font-size:12px;color:var(--ink2);display:flex;align-items:center;justify-content:center}
+.axis-t{font-size:12px;color:var(--ink2);text-align:center;margin-top:4px}
+.zlegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:8px}
+/* top 5 */
+.top li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--grid)}
+.top li:first-child{border-top:0}
+.top ol{list-style:none;margin:0;padding:0}
+.id{font-variant-numeric:tabular-nums;font-weight:650;color:var(--ink2)}
+.small{font-size:12px;color:var(--ink2)}
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--c) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
+.badge.Alto{--c:var(--crit)} .badge.Medio{--c:var(--warn)} .badge.Bajo{--c:var(--good)}
+.badge i{font-style:normal;color:var(--c)}
+.st-Mitigado{color:var(--goodtext);font-weight:600}
+td:last-child{white-space:nowrap}
+/* table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:860px}
+th{text-align:left;font-weight:600;color:var(--ink2);padding:8px 8px;border-bottom:1px solid var(--axis);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--ink)}
+td{padding:8px;border-bottom:1px solid var(--grid);vertical-align:top}
+tr:hover td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+td.num{text-align:center;font-variant-numeric:tabular-nums}
+.mini{display:flex;align-items:center;gap:6px;min-width:110px}
+.mini .btrack{flex:1;height:8px}
+/* form */
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+form label{display:flex;flex-direction:column;font-size:12px;color:var(--ink2);gap:3px}
+form input,form select,form textarea{background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;width:100%}
+form .wide{grid-column:1/-1}
+.preview{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.msg{font-size:13px;min-height:1.3em}
+.msg.err{color:var(--crit)}
+/* tooltip */
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:260px;display:none}
+footer{color:var(--ink2);font-size:12px;margin-top:20px}
+.empty{color:var(--ink2);padding:24px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Dashboard de análisis de riesgos</h1>
+      <p class="sub">Proyecto tecnológico ficticio: plataforma web y app móvil de inventarios para una cadena de ferreterías · Microtaller 29</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" id="btnCsv" type="button">Exportar CSV</button>
+      <button class="btn" id="btnReset" type="button">Restaurar datos</button>
+      <button class="btn" id="btnTheme" type="button" aria-label="Cambiar tema claro u oscuro">Tema</button>
+    </div>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filtros">
+    <label>Nivel de riesgo
+      <select id="fN"><option value="">Todos</option><option>Alto</option><option>Medio</option><option>Bajo</option></select>
+    </label>
+    <label>Categoría
+      <select id="fC"><option value="">Todas</option></select>
+    </label>
+    <label>Estado de mitigación
+      <select id="fE"><option value="">Todos</option><option>Sin iniciar</option><option>En proceso</option><option>Mitigado</option></select>
+    </label>
+    <label>Buscar
+      <input id="fQ" type="search" placeholder="Texto, responsable o ID">
+    </label>
+    <button class="btn" id="btnClear" type="button">Limpiar filtros</button>
+  </div>
+
+  <section class="kpis" id="kpis" aria-label="Indicadores clave"></section>
+
+  <section class="row3">
+    <div class="card">
+      <h2>Riesgos por nivel</h2>
+      <p class="hint">Distribución de los riesgos (puntaje = probabilidad × impacto).</p>
+      <div class="donut" id="donut"></div>
+    </div>
+    <div class="card">
+      <h2>Avance de mitigación por categoría</h2>
+      <p class="hint">Promedio de avance; primero las categorías más rezagadas.</p>
+      <div id="bars"></div>
+    </div>
+    <div class="card">
+      <h2>Matriz de riesgo</h2>
+      <p class="hint">Número de riesgos por probabilidad e impacto.</p>
+      <div id="heat"></div>
+    </div>
+  </section>
+
+  <section class="row2">
+    <div class="card top">
+      <h2>Top 5 riesgos prioritarios</h2>
+      <p class="hint">Mayor puntaje; a igual puntaje, menor avance de mitigación.</p>
+      <ol id="top5"></ol>
+    </div>
+    <div class="card">
+      <h2>Registrar un nuevo riesgo</h2>
+      <p class="hint">Formulario de captura: el puntaje, el nivel y el estado se calculan solos.</p>
+      <form id="form" novalidate>
+        <label class="wide">Descripción del riesgo
+          <input id="nDesc" required maxlength="120" placeholder="Ej.: Caída del servidor de base de datos en horario pico">
+        </label>
+        <label>Categoría <select id="nCat"></select></label>
+        <label>Responsable <input id="nResp" maxlength="40" placeholder="Ej.: Líder técnico"></label>
+        <label>Probabilidad (1-5) <select id="nProb"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+        <label>Impacto (1-5) <select id="nImp"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+        <label>Avance de mitigación: <b id="nAvOut">0%</b>
+          <input id="nAv" type="range" min="0" max="100" step="5" value="0">
+        </label>
+        <label>Plan de mitigación <input id="nPlan" maxlength="140" placeholder="Acción para reducir el riesgo"></label>
+        <div class="wide preview">
+          <span class="small">Resultado:</span><span id="nPrev"></span>
+          <span style="flex:1"></span>
+          <button class="btn primary" type="submit">Agregar riesgo</button>
+        </div>
+        <div class="wide msg" id="msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Registro de riesgos</h2>
+    <p class="hint" id="tblHint">Haz clic en un encabezado para ordenar.</p>
+    <div class="tw"><table id="tbl"></table></div>
+  </section>
+
+  <footer>Datos ficticios con fines académicos · Elaborado por Santiago Gutierrez Moralez · Los riesgos nuevos se guardan en este navegador (localStorage).</footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+/* ===================== BASE DE DATOS (25 registros ficticios) ===================== */
+const DEFAULT = [
+ {id:"R01",riesgo:"Falla de integración entre la API de inventarios y el ERP existente",categoria:"Técnico",prob:4,imp:5,resp:"Líder técnico",avance:45,fecha:"2026-06-08",plan:"Pruebas de integración tempranas con entorno sandbox del ERP"},
+ {id:"R02",riesgo:"Pérdida de datos por ausencia de copias de seguridad automáticas",categoria:"Técnico",prob:3,imp:5,resp:"DevOps",avance:70,fecha:"2026-06-10",plan:"Backups diarios cifrados y pruebas periódicas de restauración"},
+ {id:"R03",riesgo:"Bajo rendimiento con más de 500 usuarios concurrentes",categoria:"Técnico",prob:3,imp:4,resp:"Arquitecto de software",avance:30,fecha:"2026-06-15",plan:"Pruebas de carga y caché de consultas frecuentes"},
+ {id:"R04",riesgo:"Vulnerabilidad de inyección SQL en los módulos de consulta",categoria:"Seguridad",prob:4,imp:5,resp:"Líder de seguridad",avance:60,fecha:"2026-06-18",plan:"Consultas parametrizadas y revisión de código con OWASP Top 10"},
+ {id:"R05",riesgo:"Acceso no autorizado por contraseñas débiles de los usuarios",categoria:"Seguridad",prob:4,imp:4,resp:"Líder de seguridad",avance:100,fecha:"2026-06-20",plan:"Autenticación multifactor y política de contraseñas"},
+ {id:"R06",riesgo:"Fuga de datos personales de clientes",categoria:"Seguridad",prob:2,imp:5,resp:"Líder de seguridad",avance:55,fecha:"2026-06-25",plan:"Cifrado de datos sensibles y control de accesos por rol"},
+ {id:"R07",riesgo:"Ataque de denegación de servicio (DDoS) a la plataforma",categoria:"Seguridad",prob:2,imp:4,resp:"DevOps",avance:0,fecha:"2026-07-02",plan:"Servicio WAF y limitación de peticiones por IP"},
+ {id:"R08",riesgo:"Retraso en la entrega del módulo de facturación",categoria:"Cronograma",prob:4,imp:4,resp:"Gerente de proyecto",avance:35,fecha:"2026-07-05",plan:"Entregas incrementales y seguimiento semanal del avance"},
+ {id:"R09",riesgo:"Cambios constantes en los requisitos (scope creep)",categoria:"Cronograma",prob:5,imp:3,resp:"Gerente de proyecto",avance:50,fecha:"2026-07-08",plan:"Control formal de cambios y congelamiento de alcance por sprint"},
+ {id:"R10",riesgo:"Demoras del cliente en aprobar entregables",categoria:"Cronograma",prob:3,imp:2,resp:"Gerente de proyecto",avance:100,fecha:"2026-07-12",plan:"Acuerdo de tiempos máximos de aprobación"},
+ {id:"R11",riesgo:"Sobrecostos por licencias de nube mal estimadas",categoria:"Costos",prob:3,imp:4,resp:"Analista financiero",avance:40,fecha:"2026-07-15",plan:"Calculadora de costos y alertas de consumo en la nube"},
+ {id:"R12",riesgo:"Variación del dólar que encarece los servicios de nube",categoria:"Costos",prob:4,imp:3,resp:"Analista financiero",avance:0,fecha:"2026-07-18",plan:"Reserva de contingencia del 10% del presupuesto"},
+ {id:"R13",riesgo:"Presupuesto insuficiente para las pruebas de calidad",categoria:"Costos",prob:2,imp:3,resp:"Gerente de proyecto",avance:100,fecha:"2026-07-22",plan:"Reasignación de rubros hacia el área de QA"},
+ {id:"R14",riesgo:"Salida de un desarrollador clave del proyecto",categoria:"Recursos humanos",prob:3,imp:4,resp:"Talento humano",avance:25,fecha:"2026-07-25",plan:"Documentación compartida y rotación de tareas"},
+ {id:"R15",riesgo:"Falta de capacitación del equipo en el framework elegido",categoria:"Recursos humanos",prob:3,imp:3,resp:"Líder técnico",avance:100,fecha:"2026-07-30",plan:"Plan de capacitación de dos semanas"},
+ {id:"R16",riesgo:"Sobrecarga de trabajo y desgaste del equipo",categoria:"Recursos humanos",prob:2,imp:3,resp:"Gerente de proyecto",avance:60,fecha:"2026-08-03",plan:"Balanceo de carga y límite de horas extra"},
+ {id:"R17",riesgo:"Incumplimiento del acuerdo de nivel de servicio del proveedor de hosting",categoria:"Proveedores",prob:2,imp:5,resp:"Compras",avance:50,fecha:"2026-08-06",plan:"Cláusulas de penalidad y proveedor alterno"},
+ {id:"R18",riesgo:"Descontinuación de una librería de terceros crítica",categoria:"Proveedores",prob:2,imp:3,resp:"Líder técnico",avance:0,fecha:"2026-08-10",plan:"Inventario de dependencias y alternativas validadas"},
+ {id:"R19",riesgo:"Retraso del proveedor de lectores de código de barras",categoria:"Proveedores",prob:3,imp:3,resp:"Compras",avance:100,fecha:"2026-08-14",plan:"Pedido anticipado y proveedor de respaldo"},
+ {id:"R20",riesgo:"Cobertura insuficiente de pruebas automatizadas",categoria:"Calidad",prob:4,imp:3,resp:"Analista QA",avance:40,fecha:"2026-08-18",plan:"Meta de 70% de cobertura en la integración continua"},
+ {id:"R21",riesgo:"Defectos críticos detectados después del despliegue",categoria:"Calidad",prob:3,imp:5,resp:"Analista QA",avance:20,fecha:"2026-08-22",plan:"Pruebas de aceptación con usuarios y despliegue gradual"},
+ {id:"R22",riesgo:"Interfaz poco usable que genere rechazo de los usuarios",categoria:"Calidad",prob:2,imp:4,resp:"Diseñador UX",avance:100,fecha:"2026-08-26",plan:"Pruebas de usabilidad con prototipos"},
+ {id:"R23",riesgo:"Incumplimiento de la Ley 1581 de 2012 (protección de datos personales)",categoria:"Legal",prob:3,imp:5,resp:"Asesor jurídico",avance:30,fecha:"2026-09-01",plan:"Política de tratamiento de datos y registro de bases de datos"},
+ {id:"R24",riesgo:"Conflicto de licencias de software de código abierto",categoria:"Legal",prob:1,imp:3,resp:"Asesor jurídico",avance:0,fecha:"2026-09-05",plan:"Auditoría de licencias de las dependencias"},
+ {id:"R25",riesgo:"Documentación técnica incompleta al cierre del proyecto",categoria:"Calidad",prob:2,imp:2,resp:"Líder técnico",avance:100,fecha:"2026-09-09",plan:"Documentar de forma continua en cada sprint"}
+];
+const CATS = ["Técnico","Seguridad","Cronograma","Costos","Recursos humanos","Proveedores","Calidad","Legal"];
+const KEY = "riesgos_microtaller29_v1";
+
+/* ===================== LÓGICA ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nivelDe = s => s >= 15 ? "Alto" : s >= 7 ? "Medio" : "Bajo";
+const estadoDe = a => a >= 100 ? "Mitigado" : a <= 0 ? "Sin iniciar" : "En proceso";
+const GLYPH = {Alto:"▲", Medio:"◆", Bajo:"●"};
+const enrich = r => { const score = r.prob * r.imp; return {...r, score, nivel:nivelDe(score), estado:estadoDe(r.avance)}; };
+const badge = n => `<span class="badge ${n}"><i aria-hidden="true">${GLYPH[n]}</i>${n}</span>`;
+const pct = n => Math.round(n) + "%";
+
+let data = load();
+let sortKey = "score", sortDir = -1;
+
+function load(){
+  try{ const s = localStorage.getItem(KEY); if(s){ const a = JSON.parse(s); if(Array.isArray(a) && a.length) return a; } }catch(e){}
+  return DEFAULT.map(r => ({...r}));
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} }
+
+function filtered(){
+  const n = $("#fN").value, c = $("#fC").value, e = $("#fE").value, q = $("#fQ").value.trim().toLowerCase();
+  return data.map(enrich).filter(r =>
+    (!n || r.nivel === n) && (!c || r.categoria === c) && (!e || r.estado === e) &&
+    (!q || (r.id + " " + r.riesgo + " " + r.resp + " " + r.categoria).toLowerCase().includes(q)));
+}
+
+/* ---- KPIs ---- */
+function renderKPIs(L){
+  const t = L.length;
+  const cnt = n => L.filter(r => r.nivel === n).length;
+  const avg = t ? L.reduce((s, r) => s + r.avance, 0) / t : 0;
+  const done = L.filter(r => r.estado === "Mitigado").length;
+  const altosPend = L.filter(r => r.nivel === "Alto" && r.estado !== "Mitigado").length;
+  const share = n => t ? pct(cnt(n) / t * 100) + " del total" : "—";
+  const k = (lab, val, note, g) => `<div class="card kpi"><div class="lab">${g ? `<span class="g ${g}" aria-hidden="true">${GLYPH[g]}</span>` : ""}${lab}</div><div class="val">${val}</div><div class="note">${note}</div></div>`;
+  $("#kpis").innerHTML =
+    k("Total de riesgos", t, "identificados en el proyecto") +
+    k("Riesgos altos", cnt("Alto"), share("Alto") + " · " + altosPend + " sin mitigar", "Alto") +
+    k("Riesgos medios", cnt("Medio"), share("Medio"), "Medio") +
+    k("Riesgos bajos", cnt("Bajo"), share("Bajo"), "Bajo") +
+    k("Mitigación promedio", pct(avg), "avance medio de los planes") +
+    k("Riesgos mitigados", t ? pct(done / t * 100) : "0%", done + " de " + t + " al 100%");
+}
+
+/* ---- Donut ---- */
+function renderDonut(L){
+  const el = $("#donut"), t = L.length;
+  if(!t){ el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
+  const R = 70, C = 2 * Math.PI * R; let off = 0, segs = "", leg = "";
+  ["Alto","Medio","Bajo"].forEach(l => {
+    const n = L.filter(r => r.nivel === l).length, col = {Alto:"var(--crit)",Medio:"var(--warn)",Bajo:"var(--good)"}[l];
+    const p = pct(n / t * 100);
+    const tip = esc(`<b>Riesgo ${l}</b><br>${n} de ${t} riesgos (${p})`);
+    leg += `<div class="it" data-tip="${tip}" tabindex="0"><span class="sw" style="background:${col}"></span><span><b>${l}</b> · ${n} (${p})</span></div>`;
+    if(!n) return;
+    const frac = n / t, len = Math.max(frac * C - (n < t ? 3 : 0), .5);
+    segs += `<circle class="seg" data-tip="${tip}" tabindex="0" cx="90" cy="90" r="${R}" fill="none" style="stroke:${col}" stroke-width="26" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 90 90)"/>`;
+    off += frac * C;
+  });
+  el.innerHTML = `<svg viewBox="0 0 180 180" role="img" aria-label="Gráfico de dona de riesgos por nivel">${segs}
+    <text x="90" y="88" text-anchor="middle" font-size="30" font-weight="650" fill="var(--ink)">${t}</text>
+    <text x="90" y="108" text-anchor="middle" font-size="12" fill="var(--ink2)">riesgos</text></svg>
+    <div class="legend">${leg}<div class="small">Alto ≥ 15 · Medio 7–14 · Bajo ≤ 6</div></div>`;
+}
+
+/* ---- Barras por categoría ---- */
+function renderBars(L){
+  const el = $("#bars");
+  if(!L.length){ el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
+  const cats = [...new Set(L.map(r => r.categoria))].map(c => {
+    const g = L.filter(r => r.categoria === c);
+    return {c, n:g.length, altos:g.filter(r => r.nivel === "Alto").length, avg:g.reduce((s, r) => s + r.avance, 0) / g.length};
+  }).sort((a, b) => a.avg - b.avg);
+  el.innerHTML = cats.map(x => {
+    const tip = esc(`<b>${x.c}</b><br>Avance promedio: ${pct(x.avg)}<br>${x.n} riesgos (${x.altos} altos)`);
+    return `<div class="brow" data-tip="${tip}" tabindex="0"><span>${esc(x.c)}</span><span class="btrack"><span class="bfill" style="width:${x.avg}%"></span></span><span class="bval">${pct(x.avg)}</span></div>`;
+  }).join("");
+}
+
+/* ---- Matriz de riesgo ---- */
+function renderHeat(L){
+  let h = '<div class="heat" role="img" aria-label="Matriz de riesgo probabilidad por impacto">';
+  for(let p = 5; p >= 1; p--){
+    h += `<div class="ha">${p}</div>`;
+    for(let i = 1; i <= 5; i++){
+      const ids = L.filter(r => r.prob === p && r.imp === i).map(r => r.id), s = p * i, z = nivelDe(s);
+      const tip = esc(`<b>Prob. ${p} × Impacto ${i} = ${s}</b> (${z})<br>${ids.length ? ids.join(", ") : "Sin riesgos"}`);
+      h += `<div class="hc z-${z}" data-n="${ids.length}" data-tip="${tip}" tabindex="0" aria-label="Probabilidad ${p}, impacto ${i}: ${ids.length} riesgos">${ids.length || ""}</div>`;
+    }
+  }
+  h += '<div></div>' + [1,2,3,4,5].map(i => `<div class="ha">${i}</div>`).join("") + "</div>";
+  h += '<div class="axis-t">Impacto → (columnas) · Probabilidad ↑ (filas)</div>';
+  h += `<div class="zlegend"><span><span class="g Alto">▲</span> Alto</span><span><span class="g Medio">◆</span> Medio</span><span><span class="g Bajo">●</span> Bajo</span></div>`;
+  $("#heat").innerHTML = h;
+}
+
+/* ---- Top 5 ---- */
+function renderTop(L){
+  const t = [...L].sort((a, b) => b.score - a.score || a.avance - b.avance).slice(0, 5);
+  $("#top5").innerHTML = t.length ? t.map(r =>
+    `<li><span class="id">${r.id}</span><span>${esc(r.riesgo)}<div class="small">${esc(r.categoria)} · ${esc(r.resp)} · avance ${r.avance}%</div></span><span>${badge(r.nivel)}<div class="small" style="text-align:right">puntaje ${r.score}</div></span></li>`).join("")
+    : '<li class="empty">Sin datos para los filtros actuales.</li>';
+}
+
+/* ---- Tabla ---- */
+const COLS = [["id","ID"],["riesgo","Riesgo"],["categoria","Categoría"],["prob","P"],["imp","I"],["score","Puntaje"],["nivel","Nivel"],["resp","Responsable"],["avance","Mitigación"],["estado","Estado"]];
+const ORD = {Alto:3, Medio:2, Bajo:1};
+function renderTable(L){
+  const k = sortKey, d = sortDir;
+  const arr = [...L].sort((a, b) => {
+    let x = a[k], y = b[k];
+    if(k === "nivel"){ x = ORD[x]; y = ORD[y]; }
+    if(typeof x === "string") return x.localeCompare(y, "es") * d;
+    return (x - y) * d || a.id.localeCompare(b.id);
+  });
+  $("#tbl").innerHTML = `<thead><tr>${COLS.map(([c, n]) => `<th data-k="${c}" aria-sort="${c === k ? (d > 0 ? "ascending" : "descending") : "none"}">${n}${c === k ? (d > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead><tbody>` +
+    arr.map(r => `<tr><td class="id">${r.id}</td><td>${esc(r.riesgo)}<div class="small">Plan: ${esc(r.plan || "—")}</div></td><td>${esc(r.categoria)}</td><td class="num">${r.prob}</td><td class="num">${r.imp}</td><td class="num"><b>${r.score}</b></td><td>${badge(r.nivel)}</td><td>${esc(r.resp || "—")}</td><td><div class="mini"><span class="btrack"><span class="bfill" style="width:${r.avance}%"></span></span><span>${r.avance}%</span></div></td><td class="${r.estado === "Mitigado" ? "st-Mitigado" : ""}">${r.estado}</td></tr>`).join("") + "</tbody>";
+  $("#tblHint").textContent = `Mostrando ${L.length} de ${data.length} riesgos. Haz clic en un encabezado para ordenar.`;
+}
+
+function renderAll(){
+  const L = filtered();
+  renderKPIs(L); renderDonut(L); renderBars(L); renderHeat(L); renderTop(L); renderTable(L);
+}
+
+/* ---- Tooltip ---- */
+const tip = $("#tip");
+function showTip(el, x, y){
+  tip.innerHTML = el.dataset.tip; tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(x + 14, innerWidth - w - 8)) + "px";
+  tip.style.top = Math.max(8, Math.min(y + 14, innerHeight - h - 8)) + "px";
+}
+document.addEventListener("mousemove", e => { const el = e.target.closest("[data-tip]"); if(el) showTip(el, e.clientX, e.clientY); else tip.style.display = "none"; });
+document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip]"); if(el){ const r = el.getBoundingClientRect(); showTip(el, r.left + r.width / 2, r.bottom); } });
+document.addEventListener("focusout", () => tip.style.display = "none");
+document.addEventListener("scroll", () => tip.style.display = "none", true);
+
+/* ---- Filtros y orden ---- */
+function fillCats(){
+  const cur = $("#fC").value;
+  const all = [...new Set([...CATS, ...data.map(r => r.categoria)])];
+  $("#fC").innerHTML = '<option value="">Todas</option>' + all.map(c => `<option>${esc(c)}</option>`).join("");
+  $("#fC").value = all.includes(cur) ? cur : "";
+  $("#nCat").innerHTML = CATS.map(c => `<option>${c}</option>`).join("");
+}
+["fN","fC","fE"].forEach(i => $("#" + i).addEventListener("change", renderAll));
+$("#fQ").addEventListener("input", renderAll);
+$("#btnClear").addEventListener("click", () => { ["fN","fC","fE","fQ"].forEach(i => $("#" + i).value = ""); renderAll(); });
+$("#tbl").addEventListener("click", e => {
+  const th = e.target.closest("th"); if(!th) return;
+  const k = th.dataset.k; if(k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = (k === "score" || k === "avance" || k === "nivel") ? -1 : 1; }
+  renderAll();
+});
+/* clic en la matriz: filtra por nivel de esa celda */
+$("#heat").addEventListener("click", e => {
+  const c = e.target.closest(".hc"); if(!c || c.dataset.n === "0") return;
+  const z = [...c.classList].find(x => x.startsWith("z-")).slice(2);
+  $("#fN").value = $("#fN").value === z ? "" : z; renderAll();
+});
+
+/* ---- Formulario ---- */
+function preview(){
+  const p = +$("#nProb").value, i = +$("#nImp").value, s = p * i;
+  $("#nPrev").innerHTML = `Puntaje <b>${s}</b> ${badge(nivelDe(s))} · Estado: <b>${estadoDe(+$("#nAv").value)}</b>`;
+  $("#nAvOut").textContent = $("#nAv").value + "%";
+}
+["nProb","nImp","nAv"].forEach(i => $("#" + i).addEventListener("input", preview));
+$("#form").addEventListener("submit", e => {
+  e.preventDefault();
+  const msg = $("#msg"), desc = $("#nDesc").value.trim();
+  if(desc.length < 8){ msg.className = "wide msg err"; msg.textContent = "Escribe una descripción de al menos 8 caracteres."; $("#nDesc").focus(); return; }
+  const num = Math.max(0, ...data.map(r => parseInt(r.id.slice(1)) || 0)) + 1;
+  const r = {id:"R" + String(num).padStart(2, "0"), riesgo:desc, categoria:$("#nCat").value, prob:+$("#nProb").value, imp:+$("#nImp").value,
+    resp:$("#nResp").value.trim() || "Sin asignar", avance:+$("#nAv").value, fecha:new Date().toISOString().slice(0, 10), plan:$("#nPlan").value.trim() || "Por definir"};
+  data.push(r); save(); fillCats(); renderAll();
+  msg.className = "wide msg"; msg.textContent = `Riesgo ${r.id} agregado: puntaje ${r.prob * r.imp}, nivel ${nivelDe(r.prob * r.imp)}.`;
+  $("#form").reset(); $("#nAvOut").textContent = "0%"; preview();
+});
+
+/* ---- Exportar / restaurar / tema ---- */
+$("#btnCsv").addEventListener("click", () => {
+  const cols = ["id","riesgo","categoria","probabilidad","impacto","puntaje","nivel","responsable","estado","avance_mitigacion","fecha_identificacion","plan_mitigacion"];
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const rows = data.map(enrich).map(r => [r.id, r.riesgo, r.categoria, r.prob, r.imp, r.score, r.nivel, r.resp, r.estado, r.avance, r.fecha, r.plan].map(q).join(","));
+  const blob = new Blob(["﻿" + cols.join(",") + "\n" + rows.join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "riesgos_proyecto.csv"; a.click(); URL.revokeObjectURL(a.href);
+});
+$("#btnReset").addEventListener("click", () => {
+  if(!confirm("Se descartarán los riesgos agregados y se restaurarán los 25 registros originales. ¿Continuar?")) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  data = DEFAULT.map(r => ({...r})); fillCats(); renderAll();
+});
+$("#btnTheme").addEventListener("click", () => {
+  const root = document.documentElement, dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+
+fillCats(); preview(); renderAll();
+</script>
+</body>
+</html>
